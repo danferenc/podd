@@ -1,0 +1,38 @@
+<script>
+
+const ws = new WebSocket("ws://localhost:8765")
+
+ws.onopen = () => {
+
+    ws.send(JSON.stringify({
+        role: "operator"
+    }))
+}
+
+ws.onmessage = (event) => {
+
+    const msg = JSON.parse(event.data)
+
+    console.log(msg)
+}
+
+function sendReply() {
+
+    const text = document.getElementById("msg").value
+    const client = document.getElementById("client").value
+
+    ws.send(JSON.stringify({
+        client_id: client,
+        text: text
+    }))
+}
+
+</script>
+
+Client ID:
+<input id="client">
+
+Message:
+<input id="msg">
+
+<button onclick="sendReply()">Reply</button>
