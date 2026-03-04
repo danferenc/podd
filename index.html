@@ -1,45 +1,61 @@
 <script>
 
-const ws = new WebSocket("wss://podd-hhtr.onrender.com/")
+let ws
+let heartbeatInterval
 
-ws.onopen = () => {
+function connect(){
 
-    ws.send(JSON.stringify({
-        role: "client"
-    }))
-}
+    ws = new WebSocket("wss://podd-hhtr.onrender.com")
 
-ws.onmessage = (event) => {
+    ws.onopen = () => {
 
-    const msg = JSON.parse(event.data)
+        console.log("connected")
 
-    if (msg.type === "reply") {
+        ws.send(JSON.stringify({
+            role: "client"
+        }))
 
-        addMessage("Support", msg.text)
+        startHeartbeat()
     }
+
+    ws.onclose = () => {
+
+        console.log("connection lost, reconnecting...")
+
+        stopHeartbeat()
+
+        setTimeout(connect, 3000)
+    }
+
+    ws.onmessage = (event) => {
+
+        const msg = JSON.parse(event.data)
+
+        if(msg.type === "pong"){
+            console.log("server alive")
+        }
+    }
+
 }
 
-function sendMessage(){
+function startHeartbeat(){
 
-    const text = document.getElementById("msg").value
+    heartbeatInterval = setInterval(()=>{
 
-    ws.send(JSON.stringify({
-        text: text
-    }))
+        ws.send(JSON.stringify({
+            type: "ping"
+        }))
 
-    addMessage("You", text)
+    },5000)
+
 }
 
-function addMessage(user,text){
+function stopHeartbeat(){
 
-    const div = document.createElement("div")
+    clearInterval(heartbeatInterval)
 
-    div.innerText = user + ": " + text
-
-    document.body.appendChild(div)
 }
+
+connect()
 
 </script>
-
-<input id="msg">
-<button onclick="sendMessage()">Send</button>
