@@ -1,50 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Support Operator</title>
+
+<style>
+
+body{
+    font-family:Arial;
+    display:flex;
+    height:100vh;
+    margin:0;
+}
+
+#clients{
+    width:200px;
+    border-right:1px solid #ccc;
+    padding:10px;
+    overflow-y:auto;
+}
+
+#chatArea{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+#chat{
+    flex:1;
+    padding:10px;
+    overflow-y:auto;
+}
+
+#inputArea{
+    border-top:1px solid #ccc;
+    padding:10px;
+}
+
+.client{
+    padding:5px;
+    cursor:pointer;
+}
+
+.client:hover{
+    background:#eee;
+}
+
+.active{
+    background:#ddd;
+}
+
+.message{
+    margin:5px 0;
+}
+
+.clientMsg{
+    color:blue;
+}
+
+.operatorMsg{
+    color:green;
+}
+
+#status{
+    font-size:12px;
+    margin-bottom:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="clients">
+
+<div id="status">Connecting...</div>
+
+<h4>Clients</h4>
+
+<div id="clientList"></div>
+
+</div>
+
+<div id="chatArea">
+
+<div id="chat"></div>
+
+<div id="inputArea">
+
+<input id="msg" style="width:80%" placeholder="Reply...">
+
+<button onclick="sendReply()">Send</button>
+
+</div>
+
+</div>
+
 <script>
 
 let ws
-let heartbeatInterval
+let heartbeat
+let connected=false
+
+let clients={}
+let activeClient=null
 
 function connect(){
 
     ws = new WebSocket("wss://podd-hhtr.onrender.com")
 
-    ws.onopen = () => {
+    ws.onopen = ()=>{
 
-        console.log("connected")
+        connected=true
+
+        document.getElementById("status").innerText="Connected"
 
         ws.send(JSON.stringify({
-            role: "client"
+            role:"operator"
         }))
 
         startHeartbeat()
     }
 
-    ws.onclose = () => {
-
-        console.log("connection lost, reconnecting...")
-
-        stopHeartbeat()
-
-        setTimeout(connect, 3000)
-    }
-
-    ws.onmessage = (event) => {
+    ws.onmessage = (event)=>{
 
         const msg = JSON.parse(event.data)
 
-        if(msg.type === "pong"){
-            console.log("server alive")
+        if(msg.type==="clients"){
+
+            msg.clients.forEach(addClient)
+
         }
+
+        if(msg.type==="new_client"){
+
+            addClient(msg.client_id)
+
+        }
+
+        if(msg.type==="client_left"){
+
+            removeClient(msg.client_id)
+
+        }
+
+        if(msg.type==="message"){
+
+            showMessage(msg.client_id,msg.text)
+
+        }
+
+        if(msg.type==="pong"){
+
+            console.log("heartbeat ok")
+
+        }
+
+    }
+
+    ws.onclose = ()=>{
+
+        connected=false
+
+        document.getElementById("status").innerText="Disconnected..."
+
+        stopHeartbeat()
+
+        setTimeout(connect,3000)
+
     }
 
 }
 
 function startHeartbeat(){
 
-    heartbeatInterval = setInterval(()=>{
+    heartbeat=setInterval(()=>{
 
-        ws.send(JSON.stringify({
-            type: "ping"
-        }))
+        if(ws && connected){
+
+            ws.send(JSON.stringify({
+                type:"ping"
+            }))
+
+        }
 
     },5000)
 
@@ -52,10 +190,136 @@ function startHeartbeat(){
 
 function stopHeartbeat(){
 
-    clearInterval(heartbeatInterval)
+    clearInterval(heartbeat)
+
+}
+
+function addClient(id){
+
+    if(clients[id]) return
+
+    clients[id]=[]
+
+    const div=document.createElement("div")
+
+    div.className="client"
+
+    div.innerText=id
+
+    div.onclick=()=>selectClient(id)
+
+    div.id="client-"+id
+
+    document.getElementById("clientList").appendChild(div)
+
+}
+
+function removeClient(id){
+
+    delete clients[id]
+
+    const el=document.getElementById("client-"+id)
+
+    if(el) el.remove()
+
+}
+
+function selectClient(id){
+
+    activeClient=id
+
+    document.querySelectorAll(".client").forEach(c=>c.classList.remove("active"))
+
+    document.getElementById("client-"+id).classList.add("active")
+
+    renderChat()
+
+}
+
+function showMessage(clientId,text){
+
+    if(!clients[clientId]) addClient(clientId)
+
+    clients[clientId].push({
+        from:"client",
+        text:text
+    })
+
+    if(activeClient===clientId){
+
+        addMessage("Client",text,"clientMsg")
+
+    }
+
+}
+
+function sendReply(){
+
+    const input=document.getElementById("msg")
+
+    const text=input.value.trim()
+
+    if(!text || !activeClient) return
+
+    ws.send(JSON.stringify({
+        client_id:activeClient,
+        text:text
+    }))
+
+    clients[activeClient].push({
+        from:"operator",
+        text:text
+    })
+
+    addMessage("You",text,"operatorMsg")
+
+    input.value=""
+
+}
+
+function renderChat(){
+
+    const chat=document.getElementById("chat")
+
+    chat.innerHTML=""
+
+    if(!activeClient) return
+
+    clients[activeClient].forEach(m=>{
+
+        if(m.from==="client"){
+
+            addMessage("Client",m.text,"clientMsg")
+
+        }else{
+
+            addMessage("You",m.text,"operatorMsg")
+
+        }
+
+    })
+
+}
+
+function addMessage(user,text,cls){
+
+    const chat=document.getElementById("chat")
+
+    const div=document.createElement("div")
+
+    div.className="message "+cls
+
+    div.innerText=user+": "+text
+
+    chat.appendChild(div)
+
+    chat.scrollTop=chat.scrollHeight
 
 }
 
 connect()
 
 </script>
+
+</body>
+</html>
