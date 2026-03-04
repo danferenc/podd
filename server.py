@@ -66,14 +66,15 @@ async def handler(ws):
                         "text": data["text"]
                     }))
 
-    finally:
+  finally:
 
-        if role == "client":
+    if role == "client":
 
+        if client_id in clients:
             del clients[client_id]
 
-        if ws == operator:
-            operator = None
+    if ws == operator:
+        operator = None
 
 
 async def main():
