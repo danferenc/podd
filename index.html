@@ -1,0 +1,45 @@
+<script>
+
+const ws = new WebSocket("ws://localhost:8765")
+
+ws.onopen = () => {
+
+    ws.send(JSON.stringify({
+        role: "client"
+    }))
+}
+
+ws.onmessage = (event) => {
+
+    const msg = JSON.parse(event.data)
+
+    if (msg.type === "reply") {
+
+        addMessage("Support", msg.text)
+    }
+}
+
+function sendMessage() {
+
+    const text = document.getElementById("msg").value
+
+    ws.send(JSON.stringify({
+        text: text
+    }))
+
+    addMessage("You", text)
+}
+
+function addMessage(user, text) {
+
+    const div = document.createElement("div")
+
+    div.innerText = user + ": " + text
+
+    document.body.appendChild(div)
+}
+
+</script>
+
+<input id="msg">
+<button onclick="sendMessage()">Send</button>
