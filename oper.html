@@ -1,6 +1,6 @@
 <script>
 
-const ws = new WebSocket("ws://localhost:8765")
+const ws = new WebSocket("wss://YOUR-APP.onrender.com")
 
 ws.onopen = () => {
 
@@ -16,7 +16,7 @@ ws.onmessage = (event) => {
     console.log(msg)
 }
 
-function sendReply() {
+function reply(){
 
     const text = document.getElementById("msg").value
     const client = document.getElementById("client").value
@@ -29,10 +29,10 @@ function sendReply() {
 
 </script>
 
-Client ID:
+Client:
 <input id="client">
 
 Message:
 <input id="msg">
 
-<button onclick="sendReply()">Reply</button>
+<button onclick="reply()">Send</button>
