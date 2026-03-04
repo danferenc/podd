@@ -2,9 +2,12 @@ import asyncio
 import websockets
 import json
 import uuid
+import os
 
 clients = {}
 operator = None
+
+PORT = int(os.environ.get("PORT", 8765))
 
 
 async def handler(ws):
@@ -19,7 +22,6 @@ async def handler(ws):
     if role == "operator":
 
         operator = ws
-        print("Operator connected")
 
         await ws.send(json.dumps({
             "type": "clients",
@@ -31,8 +33,6 @@ async def handler(ws):
         client_id = str(uuid.uuid4())[:8]
 
         clients[client_id] = ws
-
-        print("Client connected", client_id)
 
         if operator:
             await operator.send(json.dumps({
@@ -66,20 +66,11 @@ async def handler(ws):
                         "text": data["text"]
                     }))
 
-    except:
-        pass
-
     finally:
 
         if role == "client":
 
             del clients[client_id]
-
-            if operator:
-                await operator.send(json.dumps({
-                    "type": "client_left",
-                    "client_id": client_id
-                }))
 
         if ws == operator:
             operator = None
@@ -87,8 +78,8 @@ async def handler(ws):
 
 async def main():
 
-    async with websockets.serve(handler, "0.0.0.0", 8765):
-        print("Server started")
+    async with websockets.serve(handler, "0.0.0.0", PORT):
+        print("Server started on", PORT)
         await asyncio.Future()
 
 
